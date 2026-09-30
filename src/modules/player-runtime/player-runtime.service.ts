@@ -19,9 +19,8 @@ import { ManifestAckDto } from './dto/manifest-ack.dto';
 import { CreateSyncDto } from '../telemetry/dto/create-sync.dto';
 import { DriverActivityGeneratorService } from '../driver-activity/driver-activity-generator.service';
 import { AuditAction } from '../audit/audit.types';
-import { Inject } from '@nestjs/common';
-import { STORAGE_PROVIDER } from 'src/common/storage/constants';
-import type { StorageProvider } from 'src/common/storage/storage.interface';
+import { STORAGE_PROVIDER } from 'src/modules/storage/constants';
+import type { StorageProvider } from 'src/modules/storage/storage.interface';
 
 @Injectable()
 export class PlayerRuntimeService {
