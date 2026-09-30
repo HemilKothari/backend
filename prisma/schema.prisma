@@ -6,3 +6,718 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  COMPLETING
+  COMPLETED
+  CANCELLED
+}
+
+enum DeviceStatus {
+  PENDING
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+  DECOMMISSIONED
+}
+
+enum DeploymentStatus {
+  PENDING
+  FAILED
+  PUBLISHED
+  ACKNOWLEDGED
+}
+
+enum PlaylistItemType {
+  CAMPAIGN
+  HOUSE
+  PARTNER
+  PUBLIC
+}
+
+enum PlaylistStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+}
+
+enum DriverDocumentType {
+  AADHAAR_FRONT
+  AADHAAR_BACK
+
+  PAN_CARD
+
+  LICENCE_FRONT
+  LICENCE_BACK
+
+  RC_BOOK
+
+  INSURANCE
+
+  PUC
+
+  PERMIT
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  FINAL
+}
+
+enum MediaOrientation {
+  UNDEFINED
+  LANDSCAPE
+  PORTRAIT
+  SQUARE
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATIONS
+  ADVERTISER
+  DRIVER
+  VIEWER
+}
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  actorUserId String?
+  actorDeviceId String?
+  actorUserRole String?
+
+  action String
+  entityType String
+  entityId String?
+
+  success Boolean @default(true)
+
+  ipAddress String?
+  userAgent String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  actorUser User? @relation(fields: [actorUserId], references: [id])
+  actorDevice Device? @relation(fields: [actorDeviceId], references: [id])
+
+  @@index([actorUserId])
+  @@index([actorDeviceId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model User {
+  id String @id @default(uuid())
+
+  name String
+
+  email String @unique
+
+  phone String
+
+  passwordHash String
+
+  role UserRole @default(VIEWER)
+
+  active Boolean @default(true)
+
+  lastLoginAt DateTime?
+
+  driverId String? @unique
+  driver Driver? @relation(fields: [driverId], references: [id])
+
+  advertiserId String? @unique
+  advertiser Advertiser? @relation(fields: [advertiserId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+}
+
+model Advertiser {
+  id          String @id @default(uuid())
+  companyName String
+  contactName String
+
+  createdAt DateTime @default(now())
+
+  campaigns Campaign[]
+  mediaAsset MediaAsset[]
+  user User?
+
+}
+
+model MediaAsset {
+  id String @id @default(uuid())
+
+  advertiserId String?
+  advertiser Advertiser? @relation(fields: [advertiserId], references: [id])
+
+  storageKey String
+
+  originalFileName String
+
+  publicUrl String
+
+  mimeType String
+
+  fileSize Int
+
+  isHouseAd Boolean @default(false)
+
+  checksum String @unique
+
+  durationSeconds Int?
+
+  width Int?
+
+  height Int?
+
+  orientation MediaOrientation
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  campaigns     Campaign[]
+  playlistItems PlaylistItem[]
+}
+
+model Campaign {
+  id String @id @default(uuid())
+
+  advertiserId String
+  advertiser   Advertiser @relation(fields: [advertiserId], references: [id])
+
+  campaignName String
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  durationDays Int @default(30)
+
+  frequencyPerLoop Int
+  fleetSize        Int
+
+  priority Int @default(1)
+
+  totalSlotsPerLoop Int?
+
+  mediaAssetId String
+
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id])
+
+  durationSeconds Int @default(1)
+
+  creativeChangesAllowed Int @default(3)
+
+  creativeChangesUsed Int @default(0)
+
+  status CampaignStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments    CampaignAssignment[]
+  reports        CampaignReport[]
+  playlistItems  PlaylistItem[]
+  deviceLogs     DeviceLog[]
+  playbackEvents PlaybackEvent[]
+}
+
+model PlaybackEvent {
+  id String @id @default(uuid())
+
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id])
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  playlistId String?
+  playlist   Playlist? @relation(fields: [playlistId], references: [id])
+
+  playlistItemId String?
+  playlistItem   PlaylistItem? @relation(fields: [playlistItemId], references: [id])
+
+  playedAt DateTime
+
+  latitude  Float?
+  longitude Float?
+
+  createdAt DateTime @default(now())
+
+  @@index([campaignId])
+  @@index([deviceId])
+  @@index([playedAt])
+}
+
+model Driver {
+  id String @id @default(uuid())
+
+  gender String?
+
+  dateOfBirth DateTime?
+
+  address String?
+
+  emergencyContact String?
+
+  aadhaarNumber String?
+
+  panNumber String?
+
+  licenceNumber String?
+
+  licenceExpiry DateTime?
+
+  active Boolean @default(true)
+
+  joiningDate DateTime @default(now())
+
+  inactiveReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents DriverDocument[]
+
+  rickshaws Rickshaw[]
+
+  payouts DriverPayout[]
+
+  user User?
+}
+
+model DriverDocument {
+  id String @id @default(uuid())
+
+  driverId String
+
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  documentType DriverDocumentType
+
+  fileUrl String
+
+  verificationStatus VerificationStatus @default(PENDING)
+
+  uploadedAt DateTime @default(now())
+
+  verifiedAt DateTime?
+
+  rejectionReason String?
+
+  expiryDate DateTime?
+
+  verifiedBy String?
+
+  @@unique([driverId, documentType])
+}
+
+model Rickshaw {
+  id String @id @default(uuid())
+
+  registrationNumber String @unique
+
+  ownerName String
+
+  ownerPhone String
+
+  vehicleType String
+
+  insuranceExpiry DateTime?
+
+  pucExpiry DateTime?
+
+  permitExpiry DateTime?
+
+  active Boolean @default(true)
+
+  driverId String
+
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  deviceId String? @unique
+
+  device Device? @relation(fields: [deviceId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  activities DriverActivity[]
+
+  payouts DriverPayout[]
+}
+
+model Device {
+  id String @id @default(uuid())
+
+  deviceCode String? @unique
+
+  apiKey String? @unique
+
+  serialNumber String?
+
+  simNumber String?
+
+  lastSeen DateTime?
+
+  playlistVersion String?
+
+  currentPlaylistId String?
+
+  currentPlaylist Playlist? @relation("CurrentPlaylist", fields: [currentPlaylistId], references: [id])
+
+  status DeviceStatus @default(PENDING)
+
+  lastManifestVersion String?
+
+  lastManifestSyncAt DateTime?
+
+  lastHeartbeatAt DateTime?
+
+  lastTelemetryAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  playlists Playlist[] @relation("PlaylistHistory")
+
+  logs DeviceLog[]
+
+  auditLogs AuditLog[]
+
+  assignments CampaignAssignment[]
+
+  playbackEvents PlaybackEvent[]
+
+  provision DeviceProvision?
+
+  playbackDeployments PlaybackDeployment[]
+  rickshaw            Rickshaw?
+}
+
+model DeviceProvision {
+  id String @id @default(uuid())
+
+  deviceId String @unique
+
+  device Device @relation(fields: [deviceId], references: [id])
+
+  provisioningTokenHash String? @unique
+
+  provisioningExpiresAt DateTime?
+
+  simNumber String?
+
+  hardwareSerial String?
+
+  installerName String?
+
+  installedAt DateTime @default(now())
+
+  activatedAt DateTime?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CampaignAssignment {
+  id String @id @default(uuid())
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id])
+
+  assignedBy String? @default("SYSTEM")
+
+  assignedAt DateTime @default(now())
+
+  status AssignmentStatus @default(ACTIVE)
+
+  @@unique([campaignId, deviceId])
+}
+
+model Playlist {
+  id String @id @default(uuid())
+
+  deviceId String
+  device   Device @relation("PlaylistHistory", fields: [deviceId], references: [id])
+
+  version String @unique
+
+  totalSlots Int @default(60)
+
+  playlistGroup String?
+
+  checksum String?
+
+  manifest PlaylistManifest?
+
+  status PlaylistStatus @default(DRAFT)
+
+  generatedAt DateTime @default(now())
+
+  items          PlaylistItem[]
+  currentDevices Device[]             @relation("CurrentPlaylist")
+  logs           DeviceLog[]
+  syncs          PlaybackDeployment[]
+  playbackEvents PlaybackEvent[]
+}
+
+model HouseAd {
+  id String @id @default(uuid())
+
+  name String
+
+  fileUrl String
+
+  durationSeconds Int
+
+  active Boolean @default(true)
+
+  playlistItems PlaylistItem[]
+}
+
+model PlaylistItem {
+  id String @id @default(uuid())
+
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id])
+
+  type PlaylistItemType
+
+  houseAdId String?
+  houseAd   HouseAd? @relation(fields: [houseAdId], references: [id])
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  mediaId    String
+  mediaAsset MediaAsset @relation(fields: [mediaId], references: [id])
+
+  position Int
+
+  durationSeconds Int
+
+  playbackEvents   PlaybackEvent[]
+
+  @@unique([playlistId, position])
+}
+
+model PlaylistManifest {
+  id String @id @default(uuid())
+
+  playlistId String   @unique
+  playlist   Playlist @relation(fields: [playlistId], references: [id])
+
+  version String
+
+  manifestHash String
+
+  manifest Json
+
+  createdAt DateTime @default(now())
+
+  updatedAt           DateTime             @updatedAt
+  playbackDeployments PlaybackDeployment[]
+}
+
+model PlaybackDeployment {
+  id String @id @default(uuid())
+
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id])
+
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id])
+
+  playlistManifestId String
+
+  playlistManifest PlaylistManifest @relation(fields: [playlistManifestId], references: [id])
+
+  status DeploymentStatus
+
+  errorMessage String?
+
+  publishedAt DateTime?
+
+  acknowledgedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([deviceId, playlistManifestId])
+}
+
+model DeviceLog {
+  id String @id @default(uuid())
+
+  deviceId String
+
+  device Device @relation(fields: [deviceId], references: [id])
+
+  latitude Decimal @db.Decimal(10, 7)
+
+  longitude Decimal @db.Decimal(10, 7)
+
+  playlistVersion String?
+
+  playlistId String?
+
+  campaignId String?
+
+  currentlyPlaying String?
+
+  batteryLevel Int?
+
+  networkStrength Int?
+
+  isOnline Boolean
+
+  playlist Playlist? @relation(fields: [playlistId], references: [id])
+
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+
+  timestamp DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([deviceId])
+  @@index([timestamp])
+}
+
+model DriverActivity {
+  id String @id @default(uuid())
+
+  rickshawId String
+  rickshaw   Rickshaw @relation(fields: [rickshawId], references: [id])
+
+  runtimeHours Float
+
+  startTime DateTime
+
+  endTime DateTime?
+}
+
+model DriverPayout {
+  id String @id @default(uuid())
+
+  driverId String
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  rickshawId String
+  rickshaw   Rickshaw @relation(fields: [rickshawId], references: [id])
+
+  month Int
+  year  Int
+
+  runtimeHours Float
+
+  activeDays Int
+
+  expectedActiveDays Int
+
+  missedDays Int
+
+  monthlyIncentive Float
+
+  deductionAmount Float
+
+  payoutAmount Float
+
+  paid Boolean @default(false)
+
+  paidAt DateTime?
+
+  generatedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([rickshawId, month, year])
+}
+
+model CampaignReport {
+  id String @id @default(uuid())
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  reportType ReportType
+
+  periodStart DateTime
+  periodEnd   DateTime
+
+  playbacks Int
+
+  estimatedImpressions Int
+
+  activeDevices Int
+
+  averagePlaybacksPerDevice Float
+
+  lastPlayback DateTime?
+
+  generatedAt DateTime @default(now())
+
+  @@unique([campaignId, reportType, periodStart, periodEnd])
+  @@index([campaignId, reportType])
+  @@index([reportType])
+  @@index([periodStart, periodEnd])
+}
+
+model Admin {
+  id String @id @default(uuid())
+
+  name String
+
+  email String @unique
+
+  passwordHash String
+
+  role AdminRole
+
+  createdAt DateTime @default(now())
+}
+
+model SystemSetting {
+  key   String @id
+  value String
+}

@@ -1,0 +1,2208 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/advertisers": {
+      "post": {
+        "operationId": "AdvertisersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdvertiserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Advertisers"
+        ]
+      },
+      "get": {
+        "operationId": "AdvertisersController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Advertisers"
+        ]
+      }
+    },
+    "/advertisers/register": {
+      "post": {
+        "operationId": "AdvertisersController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdvertiserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Advertisers"
+        ]
+      }
+    },
+    "/advertisers/{id}": {
+      "get": {
+        "operationId": "AdvertisersController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Advertisers"
+        ]
+      },
+      "patch": {
+        "operationId": "AdvertisersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdvertiserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Advertisers"
+        ]
+      },
+      "delete": {
+        "operationId": "AdvertisersController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Advertisers"
+        ]
+      }
+    },
+    "/campaigns": {
+      "post": {
+        "operationId": "CampaignsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCampaignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      },
+      "get": {
+        "operationId": "CampaignsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/campaigns/expiring": {
+      "get": {
+        "operationId": "CampaignsController_getExpiringCampaigns",
+        "parameters": [
+          {
+            "name": "days",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/campaigns/{id}": {
+      "get": {
+        "operationId": "CampaignsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      },
+      "delete": {
+        "operationId": "CampaignsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      },
+      "patch": {
+        "operationId": "CampaignsController_modifyCampaign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifyCampaignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/campaigns/{id}/activate": {
+      "post": {
+        "operationId": "CampaignsController_activate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/campaigns/{id}/cancel": {
+      "post": {
+        "operationId": "CampaignsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/campaigns/{id}/complete": {
+      "post": {
+        "operationId": "CampaignsController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/campaigns/{id}/update-creative": {
+      "post": {
+        "operationId": "CampaignsController_updateCreative",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCreativeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/internal/website/campaigns/active": {
+      "get": {
+        "operationId": "WebsiteCampaignsController_getActiveCampaigns",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WebsiteCampaigns"
+        ]
+      }
+    },
+    "/assignments/inventory": {
+      "get": {
+        "operationId": "AssignmentsController_getInventory",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Assignments"
+        ]
+      }
+    },
+    "/assignments/{campaignId}": {
+      "get": {
+        "operationId": "AssignmentsController_getAssignments",
+        "parameters": [
+          {
+            "name": "campaignId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Assignments"
+        ]
+      }
+    },
+    "/playlists/current/{deviceId}": {
+      "get": {
+        "operationId": "PlaylistsController_getCurrentPlaylist",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Playlists"
+        ]
+      }
+    },
+    "/deployment/version/{deviceId}": {
+      "get": {
+        "operationId": "PlaybackDeploymentController_getVersion",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PlaybackDeployment"
+        ]
+      }
+    },
+    "/deployment/manifest/{deviceId}": {
+      "get": {
+        "operationId": "PlaybackDeploymentController_getManifest",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PlaybackDeployment"
+        ]
+      }
+    },
+    "/reports/campaign/{campaignId}": {
+      "get": {
+        "operationId": "ReportsController_getCampaignReport",
+        "parameters": [
+          {
+            "name": "campaignId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "today",
+                "week",
+                "month",
+                "quarter",
+                "lifetime"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/devices": {
+      "post": {
+        "operationId": "DevicesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Devices"
+        ]
+      },
+      "get": {
+        "operationId": "DevicesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Devices"
+        ]
+      }
+    },
+    "/devices/{id}": {
+      "get": {
+        "operationId": "DevicesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Devices"
+        ]
+      },
+      "patch": {
+        "operationId": "DevicesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Devices"
+        ]
+      },
+      "delete": {
+        "operationId": "DevicesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Devices"
+        ]
+      }
+    },
+    "/telemetry/latest": {
+      "get": {
+        "operationId": "TelemetryController_getLatest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Telemetry"
+        ]
+      }
+    },
+    "/telemetry/offline-devices": {
+      "get": {
+        "operationId": "TelemetryController_getOfflineDevices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Telemetry"
+        ]
+      }
+    },
+    "/telemetry/live": {
+      "get": {
+        "operationId": "TelemetryController_getLiveStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Telemetry"
+        ]
+      }
+    },
+    "/telemetry/device/{deviceId}": {
+      "get": {
+        "operationId": "TelemetryController_getByDevice",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Telemetry"
+        ]
+      }
+    },
+    "/driver-activity": {
+      "get": {
+        "operationId": "DriverActivityController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverActivity"
+        ]
+      }
+    },
+    "/driver-activity/rickshaw/{rickshawId}": {
+      "get": {
+        "operationId": "DriverActivityController_findByRickshaw",
+        "parameters": [
+          {
+            "name": "rickshawId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverActivity"
+        ]
+      }
+    },
+    "/driver-activity/rickshaw/{rickshawId}/summary": {
+      "get": {
+        "operationId": "DriverActivityController_getSummary",
+        "parameters": [
+          {
+            "name": "rickshawId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "DAILY",
+              "type": "string",
+              "enum": [
+                "DAILY",
+                "WEEKLY",
+                "MONTHLY",
+                "QUARTERLY",
+                "YEARLY",
+                "CUSTOM"
+              ]
+            }
+          },
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-06-25",
+              "type": "string"
+            }
+          },
+          {
+            "name": "month",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 6,
+              "type": "number"
+            }
+          },
+          {
+            "name": "year",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          },
+          {
+            "name": "quarter",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 2,
+              "type": "number"
+            }
+          },
+          {
+            "name": "startDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-06-22",
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-06-29",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverActivity"
+        ]
+      }
+    },
+    "/driver-activity/{id}": {
+      "get": {
+        "operationId": "DriverActivityController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverActivity"
+        ]
+      },
+      "patch": {
+        "operationId": "DriverActivityController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDriverActivityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverActivity"
+        ]
+      },
+      "delete": {
+        "operationId": "DriverActivityController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverActivity"
+        ]
+      }
+    },
+    "/drivers": {
+      "post": {
+        "operationId": "DriversController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Drivers"
+        ]
+      },
+      "get": {
+        "operationId": "DriversController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Drivers"
+        ]
+      }
+    },
+    "/drivers/register": {
+      "post": {
+        "operationId": "DriversController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Drivers"
+        ]
+      }
+    },
+    "/drivers/{id}": {
+      "get": {
+        "operationId": "DriversController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Drivers"
+        ]
+      },
+      "patch": {
+        "operationId": "DriversController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Drivers"
+        ]
+      },
+      "delete": {
+        "operationId": "DriversController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Drivers"
+        ]
+      }
+    },
+    "/rickshaws": {
+      "post": {
+        "operationId": "RickshawsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRickshawDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Rickshaws"
+        ]
+      },
+      "get": {
+        "operationId": "RickshawsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Rickshaws"
+        ]
+      }
+    },
+    "/rickshaws/{id}": {
+      "get": {
+        "operationId": "RickshawsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Rickshaws"
+        ]
+      },
+      "patch": {
+        "operationId": "RickshawsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRickshawDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Rickshaws"
+        ]
+      },
+      "delete": {
+        "operationId": "RickshawsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Rickshaws"
+        ]
+      }
+    },
+    "/device-provision": {
+      "post": {
+        "operationId": "DeviceProvisionController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeviceProvisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DeviceProvision"
+        ]
+      },
+      "get": {
+        "operationId": "DeviceProvisionController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DeviceProvision"
+        ]
+      }
+    },
+    "/device-provision/{id}": {
+      "get": {
+        "operationId": "DeviceProvisionController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DeviceProvision"
+        ]
+      }
+    },
+    "/device-provision/{id}/activate": {
+      "post": {
+        "operationId": "DeviceProvisionController_activate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DeviceProvision"
+        ]
+      }
+    },
+    "/driver-payout": {
+      "get": {
+        "operationId": "DriverPayoutController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverPayout"
+        ]
+      }
+    },
+    "/driver-payout/rickshaw/{rickshawId}": {
+      "get": {
+        "operationId": "DriverPayoutController_findByRickshaw",
+        "parameters": [
+          {
+            "name": "rickshawId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverPayout"
+        ]
+      }
+    },
+    "/driver-payout/{id}": {
+      "get": {
+        "operationId": "DriverPayoutController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverPayout"
+        ]
+      },
+      "delete": {
+        "operationId": "DriverPayoutController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverPayout"
+        ]
+      }
+    },
+    "/driver-payout/{id}/pay": {
+      "patch": {
+        "operationId": "DriverPayoutController_markPaid",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverPayout"
+        ]
+      }
+    },
+    "/driver-documents": {
+      "post": {
+        "operationId": "DriverDocumentsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDriverDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverDocuments"
+        ]
+      },
+      "get": {
+        "operationId": "DriverDocumentsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverDocuments"
+        ]
+      }
+    },
+    "/driver-documents/driver/{driverId}": {
+      "post": {
+        "operationId": "DriverDocumentsController_createForDriver",
+        "parameters": [
+          {
+            "name": "driverId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDriverDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverDocuments"
+        ]
+      },
+      "get": {
+        "operationId": "DriverDocumentsController_findByDriver",
+        "parameters": [
+          {
+            "name": "driverId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverDocuments"
+        ]
+      }
+    },
+    "/driver-documents/{id}": {
+      "get": {
+        "operationId": "DriverDocumentsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverDocuments"
+        ]
+      },
+      "patch": {
+        "operationId": "DriverDocumentsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDriverDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverDocuments"
+        ]
+      },
+      "delete": {
+        "operationId": "DriverDocumentsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverDocuments"
+        ]
+      }
+    },
+    "/driver-documents/{id}/verify": {
+      "patch": {
+        "operationId": "DriverDocumentsController_verify",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyDriverDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DriverDocuments"
+        ]
+      }
+    },
+    "/media-assets/upload": {
+      "post": {
+        "operationId": "MediaAssetsController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMediaAssetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MediaAssets"
+        ]
+      }
+    },
+    "/media-assets/upload/initiate": {
+      "post": {
+        "operationId": "MediaAssetsController_initiateUpload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateMediaUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MediaAssets"
+        ]
+      }
+    },
+    "/media-assets/upload/complete": {
+      "post": {
+        "operationId": "MediaAssetsController_completeUpload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMediaUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MediaAssets"
+        ]
+      }
+    },
+    "/media-assets": {
+      "get": {
+        "operationId": "MediaAssetsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "description": "Filter by media type",
+            "schema": {
+              "enum": [
+                "image",
+                "video"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get all media assets",
+        "tags": [
+          "MediaAssets"
+        ]
+      }
+    },
+    "/media-assets/{id}": {
+      "get": {
+        "operationId": "MediaAssetsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MediaAssets"
+        ]
+      },
+      "delete": {
+        "operationId": "MediaAssetsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MediaAssets"
+        ]
+      }
+    },
+    "/player/me": {
+      "get": {
+        "operationId": "PlayerRuntimeController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "player-api-key": []
+          }
+        ],
+        "tags": [
+          "PlayerRuntime"
+        ]
+      }
+    },
+    "/player/sync": {
+      "get": {
+        "operationId": "PlayerRuntimeController_sync",
+        "parameters": [
+          {
+            "name": "currentManifestVersion",
+            "required": false,
+            "in": "query",
+            "description": "Current manifest version cached on the device",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "player-api-key": []
+          }
+        ],
+        "tags": [
+          "PlayerRuntime"
+        ]
+      },
+      "post": {
+        "operationId": "PlayerRuntimeController_syncUpload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSyncDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "player-api-key": []
+          }
+        ],
+        "tags": [
+          "PlayerRuntime"
+        ]
+      }
+    },
+    "/player/manifest": {
+      "get": {
+        "operationId": "PlayerRuntimeController_getManifest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "player-api-key": []
+          }
+        ],
+        "tags": [
+          "PlayerRuntime"
+        ]
+      }
+    },
+    "/player/media/{mediaId}": {
+      "get": {
+        "operationId": "PlayerRuntimeController_downloadMedia",
+        "parameters": [
+          {
+            "name": "mediaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "player-api-key": []
+          }
+        ],
+        "tags": [
+          "PlayerRuntime"
+        ]
+      }
+    },
+    "/player/heartbeat": {
+      "post": {
+        "operationId": "PlayerRuntimeController_heartbeat",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "player-api-key": []
+          }
+        ],
+        "tags": [
+          "PlayerRuntime"
+        ]
+      }
+    },
+    "/player/manifest/ack": {
+      "post": {
+        "operationId": "PlayerRuntimeController_acknowledgeManifest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManifestAckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "player-api-key": []
+          }
+        ],
+        "tags": [
+          "PlayerRuntime"
+        ]
+      }
+    },
+    "/player/provision": {
+      "post": {
+        "operationId": "PlayerProvisionController_provision",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisionPlayerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PlayerProvision"
+        ]
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "AdOnTheGo API",
+    "description": "AdOnTheGo Backend APIs",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "player-api-key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Enter: ApiKey <your-api-key>"
+      }
+    },
+    "schemas": {
+      "CreateAdvertiserDto": {
+        "type": "object",
+        "properties": {
+          "companyName": {
+            "type": "string",
+            "example": "AdOnTheGo"
+          },
+          "contactName": {
+            "type": "string",
+            "example": "Hemil Kothari"
+          }
+        },
+        "required": [
+          "companyName",
+          "contactName"
+        ]
+      },
+      "UpdateAdvertiserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateCampaignDto": {
+        "type": "object",
+        "properties": {
+          "campaignName": {
+            "type": "string",
+            "example": "ABC Campaign"
+          },
+          "advertiserId": {
+            "type": "string",
+            "example": "adv_123456"
+          },
+          "durationDays": {
+            "type": "number",
+            "example": 30
+          },
+          "frequencyPerLoop": {
+            "type": "number",
+            "example": 5
+          },
+          "fleetSize": {
+            "type": "number",
+            "example": 1000
+          },
+          "mediaAssetId": {
+            "type": "string",
+            "description": "Uploaded Media Asset ID"
+          },
+          "creativeChangesAllowed": {
+            "type": "number",
+            "example": 3
+          }
+        },
+        "required": [
+          "campaignName",
+          "advertiserId",
+          "durationDays",
+          "frequencyPerLoop",
+          "fleetSize",
+          "mediaAssetId",
+          "creativeChangesAllowed"
+        ]
+      },
+      "UpdateCreativeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ModifyCampaignDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateDeviceDto": {
+        "type": "object",
+        "properties": {
+          "serialNumber": {
+            "type": "string",
+            "example": "HW-SN-123456"
+          },
+          "simNumber": {
+            "type": "string",
+            "example": "919876543210"
+          }
+        }
+      },
+      "UpdateDeviceDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDriverActivityDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateDriverDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDriverDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateRickshawDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateRickshawDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateDeviceProvisionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateDriverDocumentDto": {
+        "type": "object",
+        "properties": {
+          "documentType": {
+            "type": "string",
+            "example": "PUC",
+            "enum": [
+              "AADHAAR_FRONT",
+              "AADHAAR_BACK",
+              "PAN_CARD",
+              "LICENCE_FRONT",
+              "LICENCE_BACK",
+              "RC_BOOK",
+              "INSURANCE",
+              "PUC",
+              "PERMIT"
+            ]
+          },
+          "fileUrl": {
+            "type": "string",
+            "example": "puc.pdf"
+          },
+          "expiryDate": {
+            "type": "string",
+            "example": "2027-06-26"
+          }
+        },
+        "required": [
+          "documentType",
+          "fileUrl"
+        ]
+      },
+      "VerifyDriverDocumentDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDriverDocumentDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateMediaAssetDto": {
+        "type": "object",
+        "properties": {
+          "imageDuration": {
+            "type": "number",
+            "description": "Duration in seconds for images only",
+            "example": 10
+          }
+        }
+      },
+      "InitiateMediaUploadDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CompleteMediaUploadDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "HeartbeatDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ManifestAckDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateSyncDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ProvisionPlayerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  }
+}

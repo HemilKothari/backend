@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Device" ALTER COLUMN "deviceCode" DROP NOT NULL,
+ALTER COLUMN "apiKey" DROP NOT NULL;
