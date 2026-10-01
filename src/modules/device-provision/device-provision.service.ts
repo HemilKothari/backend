@@ -96,26 +96,4 @@ export class DeviceProvisionService {
       },
     });
   }
-
-  async activate(id: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const provision = await tx.deviceProvision.update({
-        where: { id },
-        data: {
-          activatedAt: new Date(),
-        },
-      });
-
-      await tx.device.update({
-        where: {
-          id: provision.deviceId,
-        },
-        data: {
-          status: 'ONLINE',
-        },
-      });
-
-      return provision;
-    });
-  }
 }

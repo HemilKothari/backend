@@ -57,14 +57,4 @@ export class DeviceProvisionController {
   findOne(@Param('id') id: string) {
     return this.deviceProvisionService.findOne(id);
   }
-
-  @Post(':id/activate')
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.OPERATIONS,
-  )
-  activate(@Param('id') id: string) {
-    return this.deviceProvisionService.activate(id);
-  }
 }
