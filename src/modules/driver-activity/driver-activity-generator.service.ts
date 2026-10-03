@@ -59,7 +59,6 @@ export class DriverActivityGeneratorService {
     );
 
     const sessions = this.buildSessions(logs);
-    console.log(sessions);
 
     await this.persistSessions(deviceId, sessions);
   }

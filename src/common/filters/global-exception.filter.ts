@@ -49,10 +49,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     // ==========================================
     // PRISMA KNOWN ERRORS
     // ==========================================
-
-    else if (
-      exception instanceof Prisma.PrismaClientKnownRequestError
-    ) {
+    else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       switch (exception.code) {
         case 'P2002':
           statusCode = HttpStatus.CONFLICT;
@@ -75,7 +72,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       }
 
       this.logger.error(
-        `Prisma error ${exception.code}`,
+        `${request.method} ${request.path} - Prisma error ${exception.code}`,
         exception.stack,
       );
     }
@@ -83,15 +80,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     // ==========================================
     // UNKNOWN ERRORS
     // ==========================================
-
     else {
       this.logger.error(
-        exception instanceof Error
-          ? exception.message
-          : 'Unknown exception',
-        exception instanceof Error
-          ? exception.stack
-          : undefined,
+        `${request.method} ${request.path} - ${
+          exception instanceof Error ? exception.message : 'Unknown exception'
+        }`,
+        exception instanceof Error ? exception.stack : undefined,
       );
     }
 

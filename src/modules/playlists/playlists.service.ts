@@ -268,14 +268,6 @@ export class PlaylistsService {
       },
     });
 
-    slots.forEach((slot, index) => {
-      console.log(index + 1, {
-        campaignId: slot.campaignId,
-        hasMediaAsset: !!slot.mediaAsset,
-        mediaId: slot.mediaAsset?.id,
-      });
-    });
-
     await this.prisma.playlistItem.createMany({
       data: slots.map((slot, index) => ({
         playlistId: playlist.id,
