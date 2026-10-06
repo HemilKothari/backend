@@ -12,6 +12,7 @@ import {
 import { AdvertisersService } from './advertisers.service';
 import { CreateAdvertiserDto } from './dto/create-advertiser.dto';
 import { UpdateAdvertiserDto } from './dto/update-advertiser.dto';
+import { RegisterAdvertiserDto } from './dto/register-advertiser.dto';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -53,7 +54,7 @@ export class AdvertisersController {
   @Post('register')
   @Roles(UserRole.VIEWER)
   register(
-    @Body() dto: CreateAdvertiserDto,
+    @Body() dto: RegisterAdvertiserDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.advertisersService.register(dto, user);

@@ -1,8 +1,14 @@
-// src/modules/advertisers/dto/update-advertiser.dto.ts
+import {
+  IsNotEmpty,
+  IsString,
+} from 'class-validator';
 
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateAdvertiserDto } from './create-advertiser.dto';
+export class UpdateAdvertiserDto {
+  @IsString()
+  @IsNotEmpty()
+  companyName?: string;
 
-export class UpdateAdvertiserDto extends PartialType(
-  CreateAdvertiserDto,
-) {}
+  @IsString()
+  @IsNotEmpty()
+  contactName?: string;
+}

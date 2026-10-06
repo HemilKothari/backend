@@ -9,11 +9,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 import { CreateAdvertiserDto } from './dto/create-advertiser.dto';
 import { UpdateAdvertiserDto } from './dto/update-advertiser.dto';
-
+import * as argon2 from 'argon2';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { UserRole } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.types';
+import { RegisterAdvertiserDto } from './dto/register-advertiser.dto';
 
 @Injectable()
 export class AdvertisersService {
@@ -38,23 +39,70 @@ export class AdvertisersService {
       );
     }
 
-    const advertiser = await this.prisma.advertiser.create({
-      data,
-    });
-
-    await this.auditService.log({
-      actorUserId: user.id,
-      actorUserRole: user.role,
-      action: AuditAction.ADVERTISER_CREATED,
-      entityType: 'Advertiser',
-      entityId: advertiser.id,
-      metadata: {
-        companyName: advertiser.companyName,
-        contactName: advertiser.contactName,
+    const existingUser = await this.prisma.user.findUnique({
+      where: {
+        email: data.email,
       },
     });
 
-    return advertiser;
+    if (existingUser) {
+      throw new ConflictException('A user with this email already exists.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const advertiser = await tx.advertiser.create({
+        data: {
+          companyName: data.companyName,
+          contactName: data.contactName,
+        },
+      });
+
+      const passwordHash = await argon2.hash(data.password);
+
+      const advertiserUser = await tx.user.create({
+        data: {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          passwordHash,
+          role: UserRole.ADVERTISER,
+          active: true,
+          advertiserId: advertiser.id,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          active: true,
+          advertiserId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: user.id,
+          action: AuditAction.ADVERTISER_CREATED,
+          entityType: 'Advertiser',
+          entityId: advertiser.id,
+          success: true,
+          metadata: {
+            companyName: advertiser.companyName,
+            contactName: advertiser.contactName,
+            advertiserUserId: advertiserUser.id,
+            advertiserEmail: advertiserUser.email,
+          },
+        },
+      });
+
+      return {
+        advertiser,
+        user: advertiserUser,
+      };
+    });
   }
 
   /**
@@ -67,7 +115,7 @@ export class AdvertisersService {
    * The advertiser creation and user update happen
    * inside one database transaction.
    */
-  async register(data: CreateAdvertiserDto, user: AuthenticatedUser) {
+  async register(data: RegisterAdvertiserDto, user: AuthenticatedUser) {
     if (user.role !== UserRole.VIEWER) {
       throw new ForbiddenException(
         'Only viewer users can register as advertisers.',
