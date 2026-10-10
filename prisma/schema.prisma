@@ -194,6 +194,8 @@ model MediaAsset {
 
   isHouseAd Boolean @default(false)
 
+  active Boolean @default(true)
+
   checksum String @unique
 
   durationSeconds Int?
