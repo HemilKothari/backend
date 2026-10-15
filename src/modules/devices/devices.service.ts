@@ -1,5 +1,6 @@
+
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DeviceStatus } from '@prisma/client';
+import { DeviceStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
@@ -10,6 +11,8 @@ import {
   hashProvisioningToken,
 } from 'src/common/utils/provisioning-token.util';
 import { generateProvisioningQr } from 'src/common/utils/qr.util';
+
+const PROVISIONING_TOKEN_TTL_MS = 30 * 60 * 1000;
 
 @Injectable()
 export class DevicesService {
@@ -23,16 +26,124 @@ export class DevicesService {
     actorUserId?: string,
     actorUserRole?: string,
   ) {
+    // Generate everything that can fail before changing the database.
     const provisioningToken = generateProvisioningToken();
     const provisioningTokenHash = hashProvisioningToken(provisioningToken);
-
-    const provisioningExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-    // Generate the QR before writing to the database.
-    // If QR generation fails, no device or provision record is created.
+    const provisioningExpiresAt = new Date(
+      Date.now() + PROVISIONING_TOKEN_TTL_MS,
+    );
     const qrCode = await generateProvisioningQr(provisioningToken);
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Reuse the newest device that has never been provisioned.
+      const existingDevice = await tx.device.findFirst({
+        where: {
+          status: DeviceStatus.PENDING,
+          provision: {
+            is: {
+              activatedAt: null,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          provision: true,
+        },
+      });
+
+      if (existingDevice?.provision) {
+        const currentProvision = existingDevice.provision;
+
+        // Compare-and-swap protects against concurrent token rotations.
+        const rotated = await tx.deviceProvision.updateMany({
+          where: {
+            id: currentProvision.id,
+            activatedAt: null,
+            provisioningTokenHash: currentProvision.provisioningTokenHash,
+          },
+          data: {
+            provisioningTokenHash,
+            provisioningExpiresAt,
+          },
+        });
+
+        if (rotated.count !== 1) {
+          throw new Error(
+            'The device provisioning record changed. Please retry.',
+          );
+        }
+
+        await tx.auditLog.create({
+          data: {
+            actorUserId,
+            actorUserRole,
+            action: AuditAction.DEVICE_PROVISIONING_CREATED,
+            entityType: 'DeviceProvision',
+            entityId: currentProvision.id,
+            metadata: {
+              deviceId: existingDevice.id,
+              expiresAt: provisioningExpiresAt.toISOString(),
+              regenerated: true,
+              source: 'devices.create',
+            },
+          },
+        });
+
+        return {
+          device: existingDevice,
+          provisionId: currentProvision.id,
+          reused: true,
+        };
+      }
+
+      // A pending device without a provision record is also eligible.
+      const pendingWithoutProvision = await tx.device.findFirst({
+        where: {
+          status: DeviceStatus.PENDING,
+          provision: {
+            is: null,
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      if (pendingWithoutProvision) {
+        const provision = await tx.deviceProvision.create({
+          data: {
+            deviceId: pendingWithoutProvision.id,
+            provisioningTokenHash,
+            provisioningExpiresAt,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            actorUserId,
+            actorUserRole,
+            action: AuditAction.DEVICE_PROVISIONING_CREATED,
+            entityType: 'DeviceProvision',
+            entityId: provision.id,
+            metadata: {
+              deviceId: pendingWithoutProvision.id,
+              expiresAt: provisioningExpiresAt.toISOString(),
+              regenerated: false,
+              source: 'devices.create',
+            },
+          },
+        });
+
+        return {
+          device: pendingWithoutProvision,
+          provisionId: provision.id,
+          reused: true,
+        };
+      }
+
+      // No eligible device exists, so create a new one.
       const device = await tx.device.create({
         data: {
           status: DeviceStatus.PENDING,
@@ -61,18 +172,23 @@ export class DevicesService {
         },
       });
 
-      return { device, provision };
+      return {
+        device,
+        provisionId: provision.id,
+        reused: false,
+      };
     });
 
     return {
       success: true,
-      device: created.device,
+      device: result.device,
       provisioning: {
-        provisionId: created.provision.id,
+        provisionId: result.provisionId,
         provisioningToken,
         provisioningExpiresAt,
         qrCode,
       },
+      reused: result.reused,
     };
   }
 
@@ -81,6 +197,9 @@ export class DevicesService {
       include: {
         rickshaw: true,
         provision: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
   }

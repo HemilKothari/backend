@@ -43,18 +43,9 @@ export class DeviceProvisionService {
     const now = new Date();
     const existing = device.provision;
 
-    if (
-      existing?.provisioningTokenHash &&
-      (!existing.provisioningExpiresAt || existing.provisioningExpiresAt > now)
-    ) {
-      throw new ConflictException(
-        'An active provisioning token already exists for this device.',
-      );
-    }
-
     const provisioningToken = generateProvisioningToken();
     const provisioningTokenHash = hashProvisioningToken(provisioningToken);
-    const provisioningExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const provisioningExpiresAt = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes
 
     // Generate the QR before changing the database.
     const qrCode = await generateProvisioningQr(provisioningToken);
@@ -74,16 +65,6 @@ export class DeviceProvisionService {
         }
 
         const currentNow = new Date();
-
-        if (
-          current.provisioningTokenHash &&
-          (!current.provisioningExpiresAt ||
-            current.provisioningExpiresAt > currentNow)
-        ) {
-          throw new ConflictException(
-            'An active provisioning token already exists for this device.',
-          );
-        }
 
         const updated = await tx.deviceProvision.updateMany({
           where: {
