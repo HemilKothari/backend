@@ -1,4 +1,3 @@
-
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DeviceStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -35,6 +34,8 @@ export class DevicesService {
     const qrCode = await generateProvisioningQr(provisioningToken);
 
     const result = await this.prisma.$transaction(async (tx) => {
+      // Lock the table to prevent concurrent provisioning token rotations.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(71024, 1)`;
       // Reuse the newest device that has never been provisioned.
       const existingDevice = await tx.device.findFirst({
         where: {
@@ -62,6 +63,7 @@ export class DevicesService {
             id: currentProvision.id,
             activatedAt: null,
             provisioningTokenHash: currentProvision.provisioningTokenHash,
+            provisioningExpiresAt: currentProvision.provisioningExpiresAt,
           },
           data: {
             provisioningTokenHash,
