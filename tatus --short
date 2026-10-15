@@ -1,0 +1,550 @@
+[1mdiff --git a/src/modules/device-provision/device-provision.service.ts b/src/modules/device-provision/device-provision.service.ts[m
+[1mindex 5e7a233..4af4403 100644[m
+[1m--- a/src/modules/device-provision/device-provision.service.ts[m
+[1m+++ b/src/modules/device-provision/device-provision.service.ts[m
+[36m@@ -20,63 +20,136 @@[m [mexport class DeviceProvisionService {[m
+     private auditService: AuditService,[m
+   ) {}[m
+ [m
+[31m-  async create(dto: CreateDeviceProvisionDto, actorUserId: string, actorUserRole: string) {[m
+[32m+[m[32m  async create([m
+[32m+[m[32m    dto: CreateDeviceProvisionDto,[m
+[32m+[m[32m    actorUserId: string,[m
+[32m+[m[32m    actorUserRole: string,[m
+[32m+[m[32m  ) {[m
+     const device = await this.prisma.device.findUnique({[m
+[31m-      where: {[m
+[31m-        id: dto.deviceId,[m
+[31m-      },[m
+[31m-      include: {[m
+[31m-        provision: true,[m
+[31m-      },[m
+[32m+[m[32m      where: { id: dto.deviceId },[m
+[32m+[m[32m      include: { provision: true },[m
+     });[m
+ [m
+     if (!device) {[m
+       throw new NotFoundException('Device not found.');[m
+     }[m
+ [m
+[31m-    if (device.provision) {[m
+[31m-      throw new ConflictException('Device is already provisioned.');[m
+[32m+[m[32m    if (device.provision?.activatedAt) {[m
+[32m+[m[32m      throw new ConflictException([m
+[32m+[m[32m        'This device has already been activated and cannot be reprovisioned using this endpoint.',[m
+[32m+[m[32m      );[m
+     }[m
+ [m
+[31m-    const provisioningToken = generateProvisioningToken();[m
+[32m+[m[32m    const now = new Date();[m
+[32m+[m[32m    const existing = device.provision;[m
+[32m+[m
+[32m+[m[32m    if ([m
+[32m+[m[32m      existing?.provisioningTokenHash &&[m
+[32m+[m[32m      (!existing.provisioningExpiresAt || existing.provisioningExpiresAt > now)[m
+[32m+[m[32m    ) {[m
+[32m+[m[32m      throw new ConflictException([m
+[32m+[m[32m        'An active provisioning token already exists for this device.',[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+ [m
+[32m+[m[32m    const provisioningToken = generateProvisioningToken();[m
+     const provisioningTokenHash = hashProvisioningToken(provisioningToken);[m
+[32m+[m[32m    const provisioningExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);[m
+ [m
+[31m-    const provisioningExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);[m
+[32m+[m[32m    // Generate the QR before changing the database.[m
+[32m+[m[32m    const qrCode = await generateProvisioningQr(provisioningToken);[m
+ [m
+[31m-    const provision = await this.prisma.deviceProvision.create({[m
+[31m-      data: {[m
+[31m-        deviceId: dto.deviceId,[m
+[31m-        simNumber: dto.simNumber,[m
+[31m-        hardwareSerial: dto.hardwareSerial,[m
+[31m-        installerName: dto.installerName,[m
+[31m-        notes: dto.notes,[m
+[31m-        provisioningTokenHash,[m
+[31m-        provisioningExpiresAt,[m
+[31m-      },[m
+[31m-    });[m
+[32m+[m[32m    return this.prisma.$transaction(async (tx) => {[m
+[32m+[m[32m      const current = await tx.deviceProvision.findUnique({[m
+[32m+[m[32m        where: { deviceId: dto.deviceId },[m
+[32m+[m[32m      });[m
+ [m
+[31m-    const qrCode = await generateProvisioningQr(provisioningToken);[m
+[32m+[m[32m      let provision;[m
+ [m
+[31m-    await this.auditService.log({[m
+[31m-      actorUserId,[m
+[31m-      actorUserRole,[m
+[31m-      action: AuditAction.DEVICE_PROVISIONING_CREATED,[m
+[31m-      entityType: 'DeviceProvision',[m
+[31m-      entityId: provision.id,[m
+[31m-      metadata: {[m
+[31m-        deviceId: provision.deviceId,[m
+[31m-        expiresAt: provision.provisioningExpiresAt,[m
+[31m-      },[m
+[31m-    });[m
+[32m+[m[32m      if (current) {[m
+[32m+[m[32m        if (current.activatedAt) {[m
+[32m+[m[32m          throw new ConflictException([m
+[32m+[m[32m            'This device has already been activated.',[m
+[32m+[m[32m          );[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        const currentNow = new Date();[m
+[32m+[m
+[32m+[m[32m        if ([m
+[32m+[m[32m          current.provisioningTokenHash &&[m
+[32m+[m[32m          (!current.provisioningExpiresAt ||[m
+[32m+[m[32m            current.provisioningExpiresAt > currentNow)[m
+[32m+[m[32m        ) {[m
+[32m+[m[32m          throw new ConflictException([m
+[32m+[m[32m            'An active provisioning token already exists for this device.',[m
+[32m+[m[32m          );[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        const updated = await tx.deviceProvision.updateMany({[m
+[32m+[m[32m          where: {[m
+[32m+[m[32m            id: current.id,[m
+[32m+[m[32m            activatedAt: null,[m
+[32m+[m[32m            OR: [[m
+[32m+[m[32m              { provisioningTokenHash: null },[m
+[32m+[m[32m              { provisioningExpiresAt: { lte: currentNow } },[m
+[32m+[m[32m            ],[m
+[32m+[m[32m          },[m
+[32m+[m[32m          data: {[m
+[32m+[m[32m            provisioningTokenHash,[m
+[32m+[m[32m            provisioningExpiresAt,[m
+[32m+[m[32m            ...(dto.installerName !== undefined && {[m
+[32m+[m[32m              installerName: dto.installerName,[m
+[32m+[m[32m            }),[m
+[32m+[m[32m            ...(dto.notes !== undefined && {[m
+[32m+[m[32m              notes: dto.notes,[m
+[32m+[m[32m            }),[m
+[32m+[m[32m          },[m
+[32m+[m[32m        });[m
+ [m
+[31m-    return {[m
+[31m-      success: true,[m
+[31m-      provisionId: provision.id,[m
+[31m-      provisioningToken,[m
+[31m-      provisioningExpiresAt,[m
+[31m-      qrCode,[m
+[31m-    };[m
+[32m+[m[32m        if (updated.count !== 1) {[m
+[32m+[m[32m          throw new ConflictException([m
+[32m+[m[32m            'The provisioning record changed. Please retry.',[m
+[32m+[m[32m          );[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        provision = await tx.deviceProvision.findUniqueOrThrow({[m
+[32m+[m[32m          where: { id: current.id },[m
+[32m+[m[32m        });[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        provision = await tx.deviceProvision.create({[m
+[32m+[m[32m          data: {[m
+[32m+[m[32m            deviceId: dto.deviceId,[m
+[32m+[m[32m            provisioningTokenHash,[m
+[32m+[m[32m            provisioningExpiresAt,[m
+[32m+[m[32m            installerName: dto.installerName,[m
+[32m+[m[32m            notes: dto.notes,[m
+[32m+[m[32m          },[m
+[32m+[m[32m        });[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      await tx.auditLog.create({[m
+[32m+[m[32m        data: {[m
+[32m+[m[32m          actorUserId,[m
+[32m+[m[32m          actorUserRole,[m
+[32m+[m[32m          action: AuditAction.DEVICE_PROVISIONING_CREATED,[m
+[32m+[m[32m          entityType: 'DeviceProvision',[m
+[32m+[m[32m          entityId: provision.id,[m
+[32m+[m[32m          metadata: {[m
+[32m+[m[32m            deviceId: provision.deviceId,[m
+[32m+[m[32m            expiresAt: provisioningExpiresAt.toISOString(),[m
+[32m+[m[32m            regenerated: Boolean(current),[m
+[32m+[m[32m          },[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      return {[m
+[32m+[m[32m        success: true,[m
+[32m+[m[32m        provisionId: provision.id,[m
+[32m+[m[32m        provisioningToken,[m
+[32m+[m[32m        provisioningExpiresAt,[m
+[32m+[m[32m        qrCode,[m
+[32m+[m[32m      };[m
+[32m+[m[32m    });[m
+   }[m
+ [m
+   findAll() {[m
+[1mdiff --git a/src/modules/device-provision/dto/create-device-provision.dto.ts b/src/modules/device-provision/dto/create-device-provision.dto.ts[m
+[1mindex ee80f99..5121750 100644[m
+[1m--- a/src/modules/device-provision/dto/create-device-provision.dto.ts[m
+[1m+++ b/src/modules/device-provision/dto/create-device-provision.dto.ts[m
+[36m@@ -1,3 +1,4 @@[m
+[32m+[m
+ import {[m
+   IsNotEmpty,[m
+   IsOptional,[m
+[36m@@ -11,16 +12,6 @@[m [mexport class CreateDeviceProvisionDto {[m
+   @IsNotEmpty()[m
+   deviceId!: string;[m
+ [m
+[31m-  @IsOptional()[m
+[31m-  @IsString()[m
+[31m-  @MaxLength(30)[m
+[31m-  simNumber?: string;[m
+[31m-[m
+[31m-  @IsOptional()[m
+[31m-  @IsString()[m
+[31m-  @MaxLength(100)[m
+[31m-  hardwareSerial?: string;[m
+[31m-[m
+   @IsOptional()[m
+   @IsString()[m
+   @MaxLength(150)[m
+[36m@@ -30,4 +21,4 @@[m [mexport class CreateDeviceProvisionDto {[m
+   @IsString()[m
+   @MaxLength(1000)[m
+   notes?: string;[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/modules/devices/devices.service.ts b/src/modules/devices/devices.service.ts[m
+[1mindex 1723298..fdb43fa 100644[m
+[1m--- a/src/modules/devices/devices.service.ts[m
+[1m+++ b/src/modules/devices/devices.service.ts[m
+[36m@@ -1,10 +1,16 @@[m
+ import { Injectable, NotFoundException } from '@nestjs/common';[m
+[32m+[m[32mimport { DeviceStatus } from '@prisma/client';[m
+ import { PrismaService } from 'src/prisma/prisma.service';[m
+ import { CreateDeviceDto } from './dto/create-device.dto';[m
+ import { UpdateDeviceDto } from './dto/update-device.dto';[m
+[31m-import { DeviceStatus } from '@prisma/client';[m
+ import { AuditService } from '../audit/audit.service';[m
+ import { AuditAction } from '../audit/audit.types';[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  generateProvisioningToken,[m
+[32m+[m[32m  hashProvisioningToken,[m
+[32m+[m[32m} from 'src/common/utils/provisioning-token.util';[m
+[32m+[m[32mimport { generateProvisioningQr } from 'src/common/utils/qr.util';[m
+[32m+[m
+ @Injectable()[m
+ export class DevicesService {[m
+   constructor([m
+[36m@@ -12,29 +18,62 @@[m [mexport class DevicesService {[m
+     private readonly auditService: AuditService,[m
+   ) {}[m
+ [m
+[31m-  async create(dto: CreateDeviceDto, actorUserId?: string, actorUserRole?: string) {[m
+[31m-    const device = await this.prisma.device.create({[m
+[31m-      data: {[m
+[31m-        serialNumber: dto.serialNumber,[m
+[31m-        simNumber: dto.simNumber,[m
+[32m+[m[32m  async create([m
+[32m+[m[32m    _dto: CreateDeviceDto,[m
+[32m+[m[32m    actorUserId?: string,[m
+[32m+[m[32m    actorUserRole?: string,[m
+[32m+[m[32m  ) {[m
+[32m+[m[32m    const provisioningToken = generateProvisioningToken();[m
+[32m+[m[32m    const provisioningTokenHash = hashProvisioningToken(provisioningToken);[m
+ [m
+[31m-        status: DeviceStatus.PENDING,[m
+[31m-      },[m
+[31m-    });[m
+[32m+[m[32m    const provisioningExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);[m
+ [m
+[31m-    await this.auditService.log({[m
+[31m-      actorUserId,[m
+[31m-      actorUserRole,[m
+[31m-      action: AuditAction.DEVICE_CREATED,[m
+[31m-      entityType: 'Device',[m
+[31m-      entityId: device.id,[m
+[31m-      metadata: {[m
+[31m-        serialNumber: device.serialNumber,[m
+[31m-        simNumber: device.simNumber,[m
+[31m-      },[m
+[32m+[m[32m    // Generate the QR before writing to the database.[m
+[32m+[m[32m    // If QR generation fails, no device or provision record is created.[m
+[32m+[m[32m    const qrCode = await generateProvisioningQr(provisioningToken);[m
+[32m+[m
+[32m+[m[32m    const created = await this.prisma.$transaction(async (tx) => {[m
+[32m+[m[32m      const device = await tx.device.create({[m
+[32m+[m[32m        data: {[m
+[32m+[m[32m          status: DeviceStatus.PENDING,[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      const provision = await tx.deviceProvision.create({[m
+[32m+[m[32m        data: {[m
+[32m+[m[32m          deviceId: device.id,[m
+[32m+[m[32m          provisioningTokenHash,[m
+[32m+[m[32m          provisioningExpiresAt,[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      await tx.auditLog.create({[m
+[32m+[m[32m        data: {[m
+[32m+[m[32m          actorUserId,[m
+[32m+[m[32m          actorUserRole,[m
+[32m+[m[32m          action: AuditAction.DEVICE_CREATED,[m
+[32m+[m[32m          entityType: 'Device',[m
+[32m+[m[32m          entityId: device.id,[m
+[32m+[m[32m          metadata: {[m
+[32m+[m[32m            status: device.status,[m
+[32m+[m[32m            provisioningExpiresAt: provisioningExpiresAt.toISOString(),[m
+[32m+[m[32m          },[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      return { device, provision };[m
+     });[m
+ [m
+[31m-    return device;[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: true,[m
+[32m+[m[32m      device: created.device,[m
+[32m+[m[32m      provisioning: {[m
+[32m+[m[32m        provisionId: created.provision.id,[m
+[32m+[m[32m        provisioningToken,[m
+[32m+[m[32m        provisioningExpiresAt,[m
+[32m+[m[32m        qrCode,[m
+[32m+[m[32m      },[m
+[32m+[m[32m    };[m
+   }[m
+ [m
+   findAll() {[m
+[36m@@ -61,11 +100,18 @@[m [mexport class DevicesService {[m
+ [m
+     return device;[m
+   }[m
+[31m-  async update(id: string, dto: UpdateDeviceDto, actorUserId?: string, actorUserRole?: string) {[m
+[32m+[m
+[32m+[m[32m  async update([m
+[32m+[m[32m    id: string,[m
+[32m+[m[32m    dto: UpdateDeviceDto,[m
+[32m+[m[32m    actorUserId?: string,[m
+[32m+[m[32m    actorUserRole?: string,[m
+[32m+[m[32m  ) {[m
+     const device = await this.prisma.device.update({[m
+       where: { id },[m
+       data: dto,[m
+     });[m
+[32m+[m
+     await this.auditService.log({[m
+       actorUserId,[m
+       actorUserRole,[m
+[36m@@ -76,6 +122,7 @@[m [mexport class DevicesService {[m
+         updatedFields: Object.keys(dto),[m
+       },[m
+     });[m
+[32m+[m
+     return device;[m
+   }[m
+ [m
+[36m@@ -95,6 +142,7 @@[m [mexport class DevicesService {[m
+       entityType: 'Device',[m
+       entityId: device.id,[m
+     });[m
+[32m+[m
+     return device;[m
+   }[m
+ }[m
+[1mdiff --git a/src/modules/devices/dto/create-device.dto.ts b/src/modules/devices/dto/create-device.dto.ts[m
+[1mindex 85f40f6..b48718f 100644[m
+[1m--- a/src/modules/devices/dto/create-device.dto.ts[m
+[1m+++ b/src/modules/devices/dto/create-device.dto.ts[m
+[36m@@ -1,20 +1,4 @@[m
+ import { ApiPropertyOptional } from '@nestjs/swagger';[m
+ import { IsOptional, IsString, MaxLength } from 'class-validator';[m
+ [m
+[31m-export class CreateDeviceDto {[m
+[31m-  @ApiPropertyOptional({[m
+[31m-    example: 'HW-SN-123456',[m
+[31m-  })[m
+[31m-  @IsOptional()[m
+[31m-  @IsString()[m
+[31m-  @MaxLength(100)[m
+[31m-  serialNumber?: string;[m
+[31m-[m
+[31m-  @ApiPropertyOptional({[m
+[31m-    example: '919876543210',[m
+[31m-  })[m
+[31m-  @IsOptional()[m
+[31m-  @IsString()[m
+[31m-  @MaxLength(30)[m
+[31m-  simNumber?: string;[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32mexport class CreateDeviceDto {}[m
+\ No newline at end of file[m
+[1mdiff --git a/src/modules/player-runtime/dto/provision-player.dto.ts b/src/modules/player-runtime/dto/provision-player.dto.ts[m
+[1mindex 560e569..9007854 100644[m
+[1m--- a/src/modules/player-runtime/dto/provision-player.dto.ts[m
+[1m+++ b/src/modules/player-runtime/dto/provision-player.dto.ts[m
+[36m@@ -1,7 +1,22 @@[m
+[31m-import { IsString, MaxLength } from 'class-validator';[m
+[32m+[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  IsOptional,[m
+[32m+[m[32m  IsString,[m
+[32m+[m[32m  MaxLength,[m
+[32m+[m[32m} from 'class-validator';[m
+ [m
+ export class ProvisionPlayerDto {[m
+   @IsString()[m
+   @MaxLength(128)[m
+[31m-  provisioningToken: string;[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m  provisioningToken!: string;[m
+[32m+[m
+[32m+[m[32m  @IsOptional()[m
+[32m+[m[32m  @IsString()[m
+[32m+[m[32m  @MaxLength(30)[m
+[32m+[m[32m  simNumber?: string;[m
+[32m+[m
+[32m+[m[32m  @IsOptional()[m
+[32m+[m[32m  @IsString()[m
+[32m+[m[32m  @MaxLength(100)[m
+[32m+[m[32m  hardwareSerial?: string;[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/modules/player-runtime/player-runtime.service.ts b/src/modules/player-runtime/player-runtime.service.ts[m
+[1mindex 005fc2f..24bcd63 100644[m
+[1m--- a/src/modules/player-runtime/player-runtime.service.ts[m
+[1m+++ b/src/modules/player-runtime/player-runtime.service.ts[m
+[36m@@ -25,13 +25,13 @@[m [mimport type { StorageProvider } from 'src/modules/storage/storage.interface';[m
+ @Injectable()[m
+ export class PlayerRuntimeService {[m
+   constructor([m
+[31m-  private readonly prisma: PrismaService,[m
+[32m+[m[32m    private readonly prisma: PrismaService,[m
+ [m
+[31m-  private readonly driverActivityGeneratorService: DriverActivityGeneratorService,[m
+[32m+[m[32m    private readonly driverActivityGeneratorService: DriverActivityGeneratorService,[m
+ [m
+[31m-  @Inject(STORAGE_PROVIDER)[m
+[31m-  private readonly storage: StorageProvider,[m
+[31m-) {}[m
+[32m+[m[32m    @Inject(STORAGE_PROVIDER)[m
+[32m+[m[32m    private readonly storage: StorageProvider,[m
+[32m+[m[32m  ) {}[m
+ [m
+   async checkSync([m
+     device: AuthenticatedDevice,[m
+[36m@@ -218,22 +218,18 @@[m [mexport class PlayerRuntimeService {[m
+     return deployment.playlistManifest.manifest;[m
+   }[m
+ [m
+[31m-  async downloadMedia([m
+[31m-  device: AuthenticatedDevice,[m
+[31m-  mediaId: string,[m
+[31m-) {[m
+[31m-  const media = await this.prisma.mediaAsset.findUnique({[m
+[31m-    where: {[m
+[31m-      id: mediaId,[m
+[31m-    },[m
+[31m-  });[m
+[31m-[m
+[31m-  if (!media) {[m
+[31m-    throw new NotFoundException('Media not found.');[m
+[31m-  }[m
+[32m+[m[32m  async downloadMedia(device: AuthenticatedDevice, mediaId: string) {[m
+[32m+[m[32m    const media = await this.prisma.mediaAsset.findUnique({[m
+[32m+[m[32m      where: {[m
+[32m+[m[32m        id: mediaId,[m
+[32m+[m[32m      },[m
+[32m+[m[32m    });[m
+ [m
+[31m-  const allowed =[m
+[31m-    await this.prisma.playlistItem.findFirst({[m
+[32m+[m[32m    if (!media) {[m
+[32m+[m[32m      throw new NotFoundException('Media not found.');[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const allowed = await this.prisma.playlistItem.findFirst({[m
+       where: {[m
+         mediaId,[m
+ [m
+[36m@@ -247,28 +243,25 @@[m [mexport class PlayerRuntimeService {[m
+       },[m
+     });[m
+ [m
+[31m-  if (!allowed) {[m
+[31m-    throw new ForbiddenException([m
+[31m-      'Media does not belong to this device.',[m
+[31m-    );[m
+[31m-  }[m
+[32m+[m[32m    if (!allowed) {[m
+[32m+[m[32m      throw new ForbiddenException('Media does not belong to this device.');[m
+[32m+[m[32m    }[m
+ [m
+[31m-  const downloadUrl =[m
+[31m-    await this.storage.createPresignedDownloadUrl([m
+[32m+[m[32m    const downloadUrl = await this.storage.createPresignedDownloadUrl([m
+       media.storageKey,[m
+       600,[m
+     );[m
+ [m
+[31m-  return {[m
+[31m-    mediaId: media.id,[m
+[31m-    fileName: media.originalFileName,[m
+[31m-    mimeType: media.mimeType,[m
+[31m-    fileSize: media.fileSize,[m
+[31m-    checksum: media.checksum,[m
+[31m-    downloadUrl,[m
+[31m-    expiresIn: 600,[m
+[31m-  };[m
+[31m-}[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      mediaId: media.id,[m
+[32m+[m[32m      fileName: media.originalFileName,[m
+[32m+[m[32m      mimeType: media.mimeType,[m
+[32m+[m[32m      fileSize: media.fileSize,[m
+[32m+[m[32m      checksum: media.checksum,[m
+[32m+[m[32m      downloadUrl,[m
+[32m+[m[32m      expiresIn: 600,[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+   async provision(dto: ProvisionPlayerDto) {[m
+     const tokenHash = hashProvisioningToken(dto.provisioningToken);[m
+[36m@@ -330,10 +323,14 @@[m [mexport class PlayerRuntimeService {[m
+ [m
+         data: {[m
+           activatedAt: now,[m
+[31m-[m
+           provisioningTokenHash: null,[m
+[31m-[m
+           provisioningExpiresAt: null,[m
+[32m+[m[32m          ...(dto.simNumber !== undefined && {[m
+[32m+[m[32m            simNumber: dto.simNumber,[m
+[32m+[m[32m          }),[m
+[32m+[m[32m          ...(dto.hardwareSerial !== undefined && {[m
+[32m+[m[32m            hardwareSerial: dto.hardwareSerial,[m
+[32m+[m[32m          }),[m
+         },[m
+       });[m
+ [m
+[36m@@ -350,12 +347,15 @@[m [mexport class PlayerRuntimeService {[m
+ [m
+         data: {[m
+           deviceCode,[m
+[31m-[m
+           apiKey,[m
+[31m-[m
+           status: 'ONLINE',[m
+[31m-[m
+           lastSeen: now,[m
+[32m+[m[32m          ...(dto.hardwareSerial !== undefined && {[m
+[32m+[m[32m            serialNumber: dto.hardwareSerial,[m
+[32m+[m[32m          }),[m
+[32m+[m[32m          ...(dto.simNumber !== undefined && {[m
+[32m+[m[32m            simNumber: dto.simNumber,[m
+[32m+[m[32m          }),[m
+         },[m
+       });[m
+ [m

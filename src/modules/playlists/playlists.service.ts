@@ -192,6 +192,7 @@ export class PlaylistsService {
     const houseAd = await this.prisma.mediaAsset.findFirst({
       where: {
         isHouseAd: true,
+        active: true
       },
 
       orderBy: {

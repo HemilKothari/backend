@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -27,6 +28,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { InitiateMediaUploadDto } from './dto/initiate-upload.dto';
 import { CompleteMediaUploadDto } from './dto/complete-media-upload.dto';
+import { DeleteMediaAssetDto } from './dto/delete-media-asset.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(
@@ -76,10 +78,13 @@ export class MediaAssetsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CompleteMediaUploadDto,
   ) {
-    return this.mediaAssetsService.completeUpload(
-      dto,
-      user,
-    );
+    return this.mediaAssetsService.completeUpload(dto, user);
+  }
+
+  @Post('storage-cleanup/retry')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  retryPendingStorageCleanup() {
+    return this.mediaAssetsService.retryPendingStorageCleanup();
   }
 
   @Get()
@@ -120,8 +125,25 @@ export class MediaAssetsController {
     return this.mediaAssetsService.findOne(id, user);
   }
 
+  @Patch(':id/deactivate')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OPERATIONS)
+  deactivate(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.mediaAssetsService.deactivate(id, user);
+  }
+
+  @Patch(':id/activate')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OPERATIONS)
+  activate(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.mediaAssetsService.activate(id, user);
+  }
+
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.mediaAssetsService.remove(id, user);
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  remove(
+    @Param('id') id: string,
+    @Body() dto: DeleteMediaAssetDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.mediaAssetsService.remove(id, dto, user);
   }
 }

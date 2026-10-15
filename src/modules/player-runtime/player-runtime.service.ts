@@ -25,13 +25,13 @@ import type { StorageProvider } from 'src/modules/storage/storage.interface';
 @Injectable()
 export class PlayerRuntimeService {
   constructor(
-  private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService,
 
-  private readonly driverActivityGeneratorService: DriverActivityGeneratorService,
+    private readonly driverActivityGeneratorService: DriverActivityGeneratorService,
 
-  @Inject(STORAGE_PROVIDER)
-  private readonly storage: StorageProvider,
-) {}
+    @Inject(STORAGE_PROVIDER)
+    private readonly storage: StorageProvider,
+  ) {}
 
   async checkSync(
     device: AuthenticatedDevice,
@@ -218,22 +218,18 @@ export class PlayerRuntimeService {
     return deployment.playlistManifest.manifest;
   }
 
-  async downloadMedia(
-  device: AuthenticatedDevice,
-  mediaId: string,
-) {
-  const media = await this.prisma.mediaAsset.findUnique({
-    where: {
-      id: mediaId,
-    },
-  });
+  async downloadMedia(device: AuthenticatedDevice, mediaId: string) {
+    const media = await this.prisma.mediaAsset.findUnique({
+      where: {
+        id: mediaId,
+      },
+    });
 
-  if (!media) {
-    throw new NotFoundException('Media not found.');
-  }
+    if (!media) {
+      throw new NotFoundException('Media not found.');
+    }
 
-  const allowed =
-    await this.prisma.playlistItem.findFirst({
+    const allowed = await this.prisma.playlistItem.findFirst({
       where: {
         mediaId,
 
@@ -247,28 +243,25 @@ export class PlayerRuntimeService {
       },
     });
 
-  if (!allowed) {
-    throw new ForbiddenException(
-      'Media does not belong to this device.',
-    );
-  }
+    if (!allowed) {
+      throw new ForbiddenException('Media does not belong to this device.');
+    }
 
-  const downloadUrl =
-    await this.storage.createPresignedDownloadUrl(
+    const downloadUrl = await this.storage.createPresignedDownloadUrl(
       media.storageKey,
       600,
     );
 
-  return {
-    mediaId: media.id,
-    fileName: media.originalFileName,
-    mimeType: media.mimeType,
-    fileSize: media.fileSize,
-    checksum: media.checksum,
-    downloadUrl,
-    expiresIn: 600,
-  };
-}
+    return {
+      mediaId: media.id,
+      fileName: media.originalFileName,
+      mimeType: media.mimeType,
+      fileSize: media.fileSize,
+      checksum: media.checksum,
+      downloadUrl,
+      expiresIn: 600,
+    };
+  }
 
   async provision(dto: ProvisionPlayerDto) {
     const tokenHash = hashProvisioningToken(dto.provisioningToken);
@@ -330,10 +323,14 @@ export class PlayerRuntimeService {
 
         data: {
           activatedAt: now,
-
           provisioningTokenHash: null,
-
           provisioningExpiresAt: null,
+          ...(dto.simNumber !== undefined && {
+            simNumber: dto.simNumber,
+          }),
+          ...(dto.hardwareSerial !== undefined && {
+            hardwareSerial: dto.hardwareSerial,
+          }),
         },
       });
 
@@ -350,12 +347,15 @@ export class PlayerRuntimeService {
 
         data: {
           deviceCode,
-
           apiKey,
-
           status: 'ONLINE',
-
           lastSeen: now,
+          ...(dto.hardwareSerial !== undefined && {
+            serialNumber: dto.hardwareSerial,
+          }),
+          ...(dto.simNumber !== undefined && {
+            simNumber: dto.simNumber,
+          }),
         },
       });
 

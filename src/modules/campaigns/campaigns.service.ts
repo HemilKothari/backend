@@ -4,6 +4,7 @@ import {
   NotFoundException,
   Logger,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
@@ -75,6 +76,12 @@ export class CampaignsService {
 
     if (!mediaAsset) {
       throw new NotFoundException('Media asset not found');
+    }
+
+    if (!mediaAsset.active) {
+      throw new ConflictException(
+        'This media asset is inactive and cannot be used for a new campaign.',
+      );
     }
 
     if (
@@ -654,6 +661,19 @@ export class CampaignsService {
       });
 
       if (!mediaAsset) {
+        throw new NotFoundException('Media asset not found');
+      }
+
+      if (!mediaAsset.active) {
+        throw new ConflictException(
+          'This media asset is inactive and cannot be assigned to a campaign.',
+        );
+      }
+
+      if (
+        user.role === UserRole.ADVERTISER &&
+        mediaAsset.advertiserId !== user.advertiserId
+      ) {
         throw new NotFoundException('Media asset not found');
       }
     }

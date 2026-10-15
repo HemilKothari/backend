@@ -103,6 +103,11 @@ enum UserRole {
   VIEWER
 }
 
+enum MediaCleanupStatus {
+  PENDING
+  COMPLETED
+}
+
 model AuditLog {
   id String @id @default(uuid())
 
@@ -174,6 +179,21 @@ model Advertiser {
   mediaAsset MediaAsset[]
   user User?
 
+}
+
+model MediaStorageCleanup {
+  id              String             @id @default(uuid())
+  mediaId         String
+  storageKey      String             @unique
+  requestedByUserId String
+  reason          String
+  status          MediaCleanupStatus @default(PENDING)
+  attempts        Int                @default(0)
+  lastError       String?
+  createdAt       DateTime           @default(now())
+  completedAt     DateTime?
+
+  @@index([status, createdAt])
 }
 
 model MediaAsset {

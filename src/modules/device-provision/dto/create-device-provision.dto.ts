@@ -1,3 +1,4 @@
+
 import {
   IsNotEmpty,
   IsOptional,
@@ -10,16 +11,6 @@ export class CreateDeviceProvisionDto {
   @IsUUID()
   @IsNotEmpty()
   deviceId!: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  simNumber?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  hardwareSerial?: string;
 
   @IsOptional()
   @IsString()

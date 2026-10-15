@@ -12,7 +12,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import { CreateMediaAssetDto } from './dto/create-media-asset.dto';
 import { MediaAssetResponseDto } from './dto/media-asset-response.dto';
-
+import { DeleteMediaAssetDto } from './dto/delete-media-asset.dto';
 import {
   calculateFileHash,
   calculateFileHashFromPath,
@@ -257,9 +257,7 @@ export class MediaAssetsService {
         if (existingMediaChecksum.advertiserId === advertiserId) {
           await this.storage.delete(dto.storageKey);
 
-          return this.toResponseDto
-          
-          (existingMediaChecksum);
+          return this.toResponseDto(existingMediaChecksum);
         }
 
         // Same physical content, but owned by another advertiser.
@@ -334,6 +332,8 @@ export class MediaAssetsService {
     return {
       id: mediaAsset.id,
       originalFileName: mediaAsset.originalFileName,
+      isHouseAd: mediaAsset.isHouseAd,
+      active: mediaAsset.active,
       storageKey: mediaAsset.storageKey,
       publicUrl: mediaAsset.publicUrl,
       mimeType: mediaAsset.mimeType,
@@ -379,6 +379,10 @@ export class MediaAssetsService {
         id: existingMedia.id,
 
         originalFileName: existingMedia.originalFileName,
+
+        isHouseAd: existingMedia.isHouseAd,
+
+        active: existingMedia.active,
 
         storageKey: existingMedia.storageKey,
 
@@ -452,6 +456,8 @@ export class MediaAssetsService {
         durationSeconds: mediaAsset.durationSeconds,
         width: mediaAsset.width,
         height: mediaAsset.height,
+        isHouseAd: mediaAsset.isHouseAd,
+        active: mediaAsset.active,
       },
     });
 
@@ -460,6 +466,10 @@ export class MediaAssetsService {
       id: mediaAsset.id,
 
       originalFileName: mediaAsset.originalFileName,
+
+      isHouseAd: mediaAsset.isHouseAd,
+
+      active: mediaAsset.active,
 
       storageKey: mediaAsset.storageKey,
 
@@ -722,22 +732,125 @@ export class MediaAssetsService {
     return media;
   }
 
-  async remove(id: string, user: AuthenticatedUser) {
-    const where =
-      user.role === 'ADVERTISER'
-        ? {
-            id,
-            advertiserId: user.advertiserId!,
-          }
-        : {
-            id,
-          };
-    const media = await this.prisma.mediaAsset.findFirst({
-      where,
+  async deactivate(id: string, user: AuthenticatedUser) {
+    const media = await this.prisma.mediaAsset.findUnique({
+      where: { id },
+    });
+
+    if (!media) {
+      throw new NotFoundException('Media asset not found');
+    }
+
+    if (!media.active) {
+      throw new ConflictException('Media asset is already inactive');
+    }
+
+    if (media.isHouseAd) {
+      const activeHouseAdCount = await this.prisma.mediaAsset.count({
+        where: {
+          isHouseAd: true,
+          active: true,
+        },
+      });
+
+      if (activeHouseAdCount <= 1) {
+        throw new ConflictException(
+          'Cannot deactivate the last active house ad. Activate a replacement first.',
+        );
+      }
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.mediaAsset.update({
+        where: { id },
+        data: { active: false },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: user.id,
+          actorUserRole: user.role,
+          action: AuditAction.MEDIA_DEACTIVATED,
+          entityType: 'MediaAsset',
+          entityId: id,
+          metadata: {
+            reason: 'Media asset deactivated',
+            originalFileName: media.originalFileName,
+            advertiserId: media.advertiserId,
+          },
+        },
+      });
+
+      return result;
+    });
+
+    return {
+      success: true,
+      message: 'Media asset deactivated successfully',
+      media: updated,
+    };
+  }
+
+  async activate(id: string, user: AuthenticatedUser) {
+    const media = await this.prisma.mediaAsset.findUnique({
+      where: { id },
+    });
+
+    if (!media) {
+      throw new NotFoundException('Media asset not found');
+    }
+
+    if (media.active) {
+      throw new ConflictException('Media asset is already active');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.mediaAsset.update({
+        where: { id },
+        data: { active: true },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: user.id,
+          actorUserRole: user.role,
+          action: AuditAction.MEDIA_ACTIVATED,
+          entityType: 'MediaAsset',
+          entityId: id,
+          metadata: {
+            originalFileName: media.originalFileName,
+            advertiserId: media.advertiserId,
+          },
+        },
+      });
+
+      return result;
+    });
+
+    return {
+      success: true,
+      message: 'Media asset activated successfully',
+      media: updated,
+    };
+  }
+
+  async remove(id: string, dto: DeleteMediaAssetDto, user: AuthenticatedUser) {
+    const reason = dto.reason?.trim();
+
+    if (!reason) {
+      throw new BadRequestException('A deletion reason is required.');
+    }
+
+    const media = await this.prisma.mediaAsset.findUnique({
+      where: { id },
       include: {
-        campaigns: {
+        campaigns: { select: { id: true, status: true } },
+        playlistItems: {
           select: {
             id: true,
+            playlist: {
+              select: { id: true, status: true, deviceId: true },
+            },
           },
         },
       },
@@ -747,35 +860,211 @@ export class MediaAssetsService {
       throw new NotFoundException('Media asset not found');
     }
 
-    if (media.campaigns.length > 0) {
-      throw new ConflictException('Media asset is being used by campaign(s)');
+    if (media.isHouseAd && media.active) {
+      const otherActiveHouseAds = await this.prisma.mediaAsset.count({
+        where: {
+          isHouseAd: true,
+          active: true,
+          id: { not: media.id },
+        },
+      });
+
+      if (otherActiveHouseAds === 0) {
+        throw new ConflictException(
+          'Cannot delete the last active house ad. Configure another active house ad first.',
+        );
+      }
     }
 
-    await this.storage.delete(media.storageKey);
+    if (media.campaigns.length > 0) {
+      throw new ConflictException(
+        'Media asset is referenced by campaign(s). Resolve campaign references before deletion.',
+      );
+    }
 
-    const deletedMedia = await this.prisma.mediaAsset.delete({
-      where: {
-        id,
-      },
+    if (media.playlistItems.length > 0) {
+      throw new ConflictException(
+        'Media asset is referenced by playlists or playback history. Resolve playlist references before deletion.',
+      );
+    }
+
+    // Persist the deletion, audit event, and cleanup job atomically.
+    const cleanupJob = await this.prisma.$transaction(async (tx) => {
+      const job = await tx.mediaStorageCleanup.create({
+        data: {
+          mediaId: media.id,
+          storageKey: media.storageKey,
+          requestedByUserId: user.id,
+          reason,
+        },
+      });
+
+      await tx.mediaAsset.delete({
+        where: { id: media.id },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: user.id,
+          actorUserRole: user.role,
+          action: AuditAction.MEDIA_DELETED,
+          entityType: 'MediaAsset',
+          entityId: media.id,
+          metadata: {
+            reason,
+            advertiserId: media.advertiserId,
+            originalFileName: media.originalFileName,
+            mimeType: media.mimeType,
+            fileSize: media.fileSize,
+            storageKey: media.storageKey,
+            storageCleanupJobId: job.id,
+            storageCleanupStatus: 'PENDING',
+          },
+        },
+      });
+
+      return job;
     });
 
-    await this.auditService.log({
-      actorUserId: user.id,
-      actorUserRole: user.role,
-      action: AuditAction.MEDIA_DELETED,
-      entityType: 'MediaAsset',
-      entityId: deletedMedia.id,
-      metadata: {
-        advertiserId: media.advertiserId,
-        originalFileName: media.originalFileName,
-        mimeType: media.mimeType,
-        fileSize: media.fileSize,
-      },
-    });
+    // The database deletion is committed already. Storage failures must not
+    // make the API imply that the database transaction was rolled back.
+    let cleanupSucceeded = false;
+
+    try {
+      const result = await this.processStorageCleanup(cleanupJob.id);
+      cleanupSucceeded = result.success;
+    } catch (error) {
+      this.logger.error(
+        `Storage cleanup job ${cleanupJob.id} could not be processed. It remains available for retry.`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
 
     return {
       success: true,
-      message: 'Media asset deleted successfully',
+      message: cleanupSucceeded
+        ? 'Media asset deleted successfully.'
+        : 'Media asset deleted from the database. Storage cleanup is pending.',
+      storageCleanup: cleanupSucceeded ? 'COMPLETED' : 'PENDING',
+      cleanupJobId: cleanupJob.id,
+    };
+  }
+
+  private async processStorageCleanup(jobId: string) {
+    const job = await this.prisma.mediaStorageCleanup.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!job) {
+      throw new NotFoundException('Storage cleanup job not found.');
+    }
+
+    if (job.status === 'COMPLETED') {
+      return { success: true };
+    }
+
+    // Handle the storage operation separately from database updates so a
+    // database error is never misreported as an R2 deletion failure.
+    try {
+      await this.storage.delete(job.storageKey);
+    } catch (error) {
+      const safeError = 'R2 object deletion failed; retry required.';
+
+      this.logger.error(
+        `R2 deletion failed for cleanup job ${job.id}.`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      try {
+        await this.prisma.mediaStorageCleanup.update({
+          where: { id: job.id },
+          data: {
+            attempts: { increment: 1 },
+            lastError: safeError,
+          },
+        });
+      } catch (updateError) {
+        this.logger.error(
+          `Could not update failed cleanup job ${job.id}; it should be retried.`,
+          updateError instanceof Error ? updateError.stack : undefined,
+        );
+      }
+
+      try {
+        await this.prisma.auditLog.create({
+          data: {
+            actorUserId: job.requestedByUserId,
+            action: AuditAction.MEDIA_STORAGE_CLEANUP_FAILED,
+            entityType: 'MediaStorageCleanup',
+            entityId: job.id,
+            success: false,
+            metadata: {
+              storageKey: job.storageKey,
+              reason: job.reason,
+              error: safeError,
+            },
+          },
+        });
+      } catch (auditError) {
+        this.logger.error(
+          `Could not write cleanup-failure audit event for job ${job.id}.`,
+          auditError instanceof Error ? auditError.stack : undefined,
+        );
+      }
+
+      return { success: false };
+    }
+
+    // R2 deletion succeeded. If this update fails, leave the job retryable.
+    // Repeating an object deletion is safe.
+    await this.prisma.mediaStorageCleanup.update({
+      where: { id: job.id },
+      data: {
+        status: 'COMPLETED',
+        attempts: { increment: 1 },
+        lastError: null,
+        completedAt: new Date(),
+      },
+    });
+
+    return { success: true };
+  }
+
+  async retryPendingStorageCleanup() {
+    const jobs = await this.prisma.mediaStorageCleanup.findMany({
+      where: { status: 'PENDING' },
+      orderBy: { createdAt: 'asc' },
+      take: 50,
+      select: { id: true },
+    });
+
+    let completed = 0;
+    let pending = 0;
+
+    for (const job of jobs) {
+      try {
+        const result = await this.processStorageCleanup(job.id);
+
+        if (result.success) {
+          completed++;
+        } else {
+          pending++;
+        }
+      } catch (error) {
+        // Keep processing the batch if one job encounters a database error.
+        pending++;
+
+        this.logger.error(
+          `Could not retry cleanup job ${job.id}.`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+    }
+
+    return {
+      processed: jobs.length,
+      completed,
+      pending,
     };
   }
 }

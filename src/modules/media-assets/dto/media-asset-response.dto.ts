@@ -3,6 +3,10 @@ export class MediaAssetResponseDto {
 
   originalFileName: string;
 
+  isHouseAd: boolean;
+
+  active: boolean;
+
   storageKey: string;
 
   publicUrl: string;
