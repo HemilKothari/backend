@@ -55,6 +55,56 @@ export class AssignmentsService {
     };
   }
 
+    async validateRebalanceForDemo(fleetSize: number) {
+    const devices = await this.prisma.device.findMany({
+      where: {
+        status: 'ONLINE',
+      },
+    });
+
+    if (devices.length < fleetSize) {
+      throw new BadRequestException(
+        `Campaign requires ${fleetSize} devices but only ${devices.length} devices are online`,
+      );
+    }
+
+    const selectedDevices = devices.slice(0, fleetSize);
+
+    return {
+      eligibleDevices: devices,
+      selectedDevices,
+    };
+  }
+
+  async assignCampaignForDemo(campaignId: string) {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: {
+        id: campaignId,
+      },
+    });
+
+    if (!campaign) {
+      throw new NotFoundException('Campaign not found');
+    }
+
+    const { selectedDevices } = await this.validateRebalanceForDemo(
+      campaign.fleetSize,
+    );
+
+    await this.prisma.campaignAssignment.createMany({
+      data: selectedDevices.map((device) => ({
+        campaignId,
+        deviceId: device.id,
+      })),
+      skipDuplicates: true,
+    });
+
+    return {
+      assignedDevices: selectedDevices.length,
+      devices: selectedDevices,
+    };
+  }
+
   async getDeviceInventory(device: any) {
     const assignments = await this.prisma.campaignAssignment.findMany({
       where: {
@@ -117,7 +167,7 @@ export class AssignmentsService {
     const eligible: any[] = [];
 
     for (const device of devices) {
-      const inventory = await this.getDeviceInventory(device.id);
+      const inventory = await this.getDeviceInventory(device);
 
       if (inventory.availableSlots >= requiredSlots) {
         eligible.push({

@@ -309,6 +309,114 @@ export class PlaylistsService {
     };
   }
 
+    async createDemoDurationPlaylistForDevice(deviceId: string) {
+    const campaigns = await this.getAssignedCampaigns(deviceId);
+
+    const houseAd = await this.getHouseAd();
+
+    // Create one playlist item per advertiser appearance.
+    const advertiserAds: any[] = [];
+
+    for (const campaign of campaigns) {
+      const appearances = campaign.frequencyPerLoop ?? 1;
+
+      for (let i = 0; i < appearances; i++) {
+        advertiserAds.push({
+          campaignId: campaign.id,
+          mediaAsset: campaign.mediaAsset,
+          durationSeconds:
+            campaign.mediaAsset.durationSeconds ??
+            campaign.durationSeconds ??
+            10,
+          type: 'CAMPAIGN',
+        });
+      }
+    }
+
+    // Shuffle advertiser ads, but keep house-ad placement predictable.
+    const shuffledAds = this.shuffle(advertiserAds);
+
+    // Insert one house ad after every 5 advertiser ads.
+    const playlistItems: any[] = [];
+
+    shuffledAds.forEach((ad, index) => {
+      playlistItems.push(ad);
+
+      if ((index + 1) % 5 === 0) {
+        playlistItems.push({
+          campaignId: null,
+          mediaAsset: houseAd,
+          durationSeconds: houseAd.durationSeconds ?? 10,
+          type: 'HOUSE',
+        });
+      }
+    });
+
+    const version = this.generateVersion();
+
+    // Archive the device's previous active playlist.
+    await this.prisma.playlist.updateMany({
+      where: {
+        deviceId,
+        status: 'ACTIVE',
+      },
+      data: {
+        status: 'ARCHIVED',
+      },
+    });
+
+    // In demo mode, totalSlots is the number of playlist items,
+    // not the old fixed 60-slot capacity.
+    const playlist = await this.prisma.playlist.create({
+      data: {
+        deviceId,
+        version,
+        totalSlots: playlistItems.length,
+        status: 'ACTIVE',
+      },
+    });
+
+    await this.prisma.playlistItem.createMany({
+      data: playlistItems.map((item, index) => ({
+        playlistId: playlist.id,
+        campaignId: item.campaignId,
+        mediaId: item.mediaAsset.id,
+        position: index + 1,
+        durationSeconds: item.durationSeconds,
+        type: item.type,
+      })),
+    });
+
+    await this.prisma.device.update({
+      where: {
+        id: deviceId,
+      },
+      data: {
+        playlistVersion: version,
+        currentPlaylistId: playlist.id,
+      },
+    });
+
+    await this.PlaybackDeploymentService.deployPlaylist(playlist.id);
+
+    const totalDurationSeconds = playlistItems.reduce(
+      (total, item) => total + item.durationSeconds,
+      0,
+    );
+
+    return {
+      success: true,
+      playlistId: playlist.id,
+      version,
+      itemCount: playlistItems.length,
+      advertiserAdCount: shuffledAds.length,
+      houseAdCount: playlistItems.filter(
+        (item) => item.type === 'HOUSE',
+      ).length,
+      totalDurationSeconds,
+    };
+  }
+
   async generateForFleet() {
     const devices = await this.prisma.device.findMany({
       where: {

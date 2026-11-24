@@ -235,6 +235,8 @@ export class CampaignsService {
   }
 
   async activate(id: string, user: AuthenticatedUser) {
+    const demoDurationPlaylist = process.env.DEMO_DURATION_PLAYLIST === 'true';
+
     const campaign = await this.prisma.campaign.findUnique({
       where: { id },
 
@@ -249,10 +251,16 @@ export class CampaignsService {
       throw new BadRequestException('Only draft campaigns can be activated');
     }
 
-    await this.assignmentsService.validateRebalance(
-      campaign.fleetSize,
-      campaign.totalSlotsPerLoop!,
-    );
+    if (demoDurationPlaylist) {
+      await this.assignmentsService.validateRebalanceForDemo(
+        campaign.fleetSize,
+      );
+    } else {
+      await this.assignmentsService.validateRebalance(
+        campaign.fleetSize,
+        campaign.totalSlotsPerLoop!,
+      );
+    }
 
     const startDate = new Date();
 
@@ -271,13 +279,21 @@ export class CampaignsService {
       },
     });
 
-    const assignmentResult = await this.assignmentsService.assignCampaign(id);
+    const assignmentResult = demoDurationPlaylist
+      ? await this.assignmentsService.assignCampaignForDemo(id)
+      : await this.assignmentsService.assignCampaign(id);
 
     let playlistsGenerated = 0;
 
     try {
       for (const device of assignmentResult.devices) {
-        await this.playlistsService.createPlaylistForDevice(device.id);
+        if (demoDurationPlaylist) {
+          await this.playlistsService.createDemoDurationPlaylistForDevice(
+            device.id,
+          );
+        } else {
+          await this.playlistsService.createPlaylistForDevice(device.id);
+        }
         playlistsGenerated++;
       }
 
