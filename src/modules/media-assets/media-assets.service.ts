@@ -273,6 +273,8 @@ export class MediaAssetsService {
         data: {
           advertiserId,
 
+          isHouseAd: advertiserId === null,
+
           originalFileName: dto.originalFileName,
 
           storageKey: dto.storageKey,
@@ -346,168 +348,31 @@ export class MediaAssetsService {
     };
   }
 
-  async upload(
-    file: Express.Multer.File,
-    dto: CreateMediaAssetDto,
-    user: AuthenticatedUser,
-  ): Promise<MediaAssetResponseDto> {
-    let advertiserId: string | null = null;
-
-    if (user.role === 'ADVERTISER') {
-      if (!user.advertiserId) {
-        throw new ForbiddenException(
-          'User is not associated with an advertiser.',
-        );
-      }
-
-      advertiserId = user.advertiserId;
-    }
-    // 1. Validate upload
-    if (!file) {
-      throw new BadRequestException('Media file is required');
-    }
-    // 2. Calculate checksum
-    const checksum = calculateFileHash(file.buffer);
-    // 3. Check for existing media asset with the same checksum
-    const existingMedia = await this.prisma.mediaAsset.findUnique({
-      where: {
-        checksum,
-      },
-    });
-    if (existingMedia) {
-      return {
-        id: existingMedia.id,
-
-        originalFileName: existingMedia.originalFileName,
-
-        isHouseAd: existingMedia.isHouseAd,
-
-        active: existingMedia.active,
-
-        storageKey: existingMedia.storageKey,
-
-        publicUrl: existingMedia.publicUrl,
-
-        mimeType: existingMedia.mimeType,
-
-        checksum: existingMedia.checksum,
-
-        fileSize: existingMedia.fileSize,
-
-        durationSeconds: existingMedia.durationSeconds ?? undefined,
-
-        width: existingMedia.width ?? undefined,
-
-        height: existingMedia.height ?? undefined,
-
-        createdAt: existingMedia.createdAt,
-      };
-    }
-    // 3. Store media
-    const uploadResult = await this.storage.upload(file);
-    this.logger.log(`Stored media: ${uploadResult.storageKey}`);
-    // 4. Detect metadata
-    const mediaMetadata = await this.mediaService.getMediaMetadata(
-      uploadResult.filePath,
-      dto.imageDuration,
-    );
-    // 5. Validate media
-    this.validateMedia(file, mediaMetadata);
-
-    // 5. Save MediaAsset
-    const mediaAsset = await this.prisma.mediaAsset.create({
-      data: {
-        advertiserId,
-
-        originalFileName: file.originalname,
-
-        storageKey: uploadResult.storageKey,
-
-        publicUrl: uploadResult.publicUrl,
-
-        mimeType: file.mimetype,
-
-        checksum,
-
-        fileSize: file.size,
-
-        durationSeconds: mediaMetadata.durationSeconds,
-
-        width: mediaMetadata.width,
-
-        height: mediaMetadata.height,
-
-        orientation: mediaMetadata.orientation,
-      },
+  async markAsHouseAd(id: string, user: AuthenticatedUser) {
+    const media = await this.prisma.mediaAsset.findUnique({
+      where: { id },
     });
 
-    // 6. Log audit
-    await this.auditService.log({
-      actorUserId: user.id,
-      actorUserRole: user.role,
-      action: AuditAction.MEDIA_UPLOADED,
-      entityType: 'MediaAsset',
-      entityId: mediaAsset.id,
-      metadata: {
-        advertiserId: mediaAsset.advertiserId,
-        originalFileName: mediaAsset.originalFileName,
-        mimeType: mediaAsset.mimeType,
-        fileSize: mediaAsset.fileSize,
-        durationSeconds: mediaAsset.durationSeconds,
-        width: mediaAsset.width,
-        height: mediaAsset.height,
-        isHouseAd: mediaAsset.isHouseAd,
-        active: mediaAsset.active,
-      },
-    });
-
-    // 7. Return DTO
-    return {
-      id: mediaAsset.id,
-
-      originalFileName: mediaAsset.originalFileName,
-
-      isHouseAd: mediaAsset.isHouseAd,
-
-      active: mediaAsset.active,
-
-      storageKey: mediaAsset.storageKey,
-
-      publicUrl: mediaAsset.publicUrl,
-
-      mimeType: mediaAsset.mimeType,
-
-      checksum: mediaAsset.checksum,
-
-      fileSize: mediaAsset.fileSize,
-
-      durationSeconds: mediaAsset.durationSeconds ?? undefined,
-
-      width: mediaAsset.width ?? undefined,
-
-      height: mediaAsset.height ?? undefined,
-
-      createdAt: mediaAsset.createdAt,
-    };
-  }
-
-  private validateMimeType(file: Express.Multer.File): void {
-    const { mimetype } = file;
-
-    if (mimetype.startsWith('image/')) {
-      return;
+    if (!media) {
+      throw new NotFoundException('Media asset not found');
     }
 
-    const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
-
-    if (allowedVideoTypes.includes(mimetype)) {
-      return;
+    if (media.advertiserId !== null) {
+      throw new BadRequestException(
+        'Only system media can be marked as a house ad.',
+      );
     }
 
-    throw new BadRequestException({
-      message: 'Unsupported media type.',
-      received: mimetype,
+    if (media.isHouseAd) {
+      return this.toResponseDto(media);
+    }
+
+    const updated = await this.prisma.mediaAsset.update({
+      where: { id },
+      data: { isHouseAd: true },
     });
+
+    return this.toResponseDto(updated);
   }
 
   private validateStoredMedia(
@@ -587,76 +452,6 @@ export class MediaAssetsService {
         minimum:
           `${MEDIA_VALIDATION.MIN_WIDTH} x ` + `${MEDIA_VALIDATION.MIN_HEIGHT}`,
         received: `${mediaMetadata.width} x ` + `${mediaMetadata.height}`,
-      });
-    }
-  }
-
-  private validateMedia(
-    file: Express.Multer.File,
-    mediaMetadata: MediaMetadata,
-  ): void {
-    // MIME TYPE
-    this.validateMimeType(file);
-
-    // FILE SIZE
-
-    if (file.size > MEDIA_VALIDATION.MAX_FILE_SIZE) {
-      throw new BadRequestException({
-        message: 'File size exceeds maximum allowed limit.',
-        maxSizeMB: MEDIA_VALIDATION.MAX_FILE_SIZE / (1024 * 1024),
-      });
-    }
-
-    // ORIENTATION
-
-    if (mediaMetadata.orientation !== MEDIA_VALIDATION.REQUIRED_ORIENTATION) {
-      throw new BadRequestException({
-        message: 'Only portrait media is supported.',
-        expected: MEDIA_VALIDATION.REQUIRED_ORIENTATION,
-        received: mediaMetadata.orientation,
-      });
-    }
-
-    // ASPECT RATIO
-
-    const aspectRatio = mediaMetadata.aspectRatio;
-
-    if (
-      aspectRatio &&
-      (aspectRatio < MEDIA_VALIDATION.MIN_ASPECT_RATIO ||
-        aspectRatio > MEDIA_VALIDATION.MAX_ASPECT_RATIO)
-    ) {
-      throw new BadRequestException({
-        message: 'Only 9:16 portrait media is supported.',
-        expected: '9:16',
-        received: aspectRatio.toFixed(2),
-      });
-    }
-
-    // DURATION
-
-    if (
-      mediaMetadata.durationSeconds < MEDIA_VALIDATION.MIN_DURATION_SECONDS ||
-      mediaMetadata.durationSeconds > MEDIA_VALIDATION.MAX_DURATION_SECONDS
-    ) {
-      throw new BadRequestException({
-        message: 'Media duration must be between 10 and 60 seconds.',
-        received: mediaMetadata.durationSeconds,
-        min: MEDIA_VALIDATION.MIN_DURATION_SECONDS,
-        max: MEDIA_VALIDATION.MAX_DURATION_SECONDS,
-      });
-    }
-
-    // RESOLUTION
-
-    if (
-      (mediaMetadata.width ?? 0) < MEDIA_VALIDATION.MIN_WIDTH ||
-      (mediaMetadata.height ?? 0) < MEDIA_VALIDATION.MIN_HEIGHT
-    ) {
-      throw new BadRequestException({
-        message: 'Resolution is too low.',
-        minimum: `${MEDIA_VALIDATION.MIN_WIDTH} x ${MEDIA_VALIDATION.MIN_HEIGHT}`,
-        received: `${mediaMetadata.width} x ${mediaMetadata.height}`,
       });
     }
   }

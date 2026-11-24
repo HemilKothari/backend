@@ -41,16 +41,6 @@ import { DeleteMediaAssetDto } from './dto/delete-media-asset.dto';
 export class MediaAssetsController {
   constructor(private readonly mediaAssetsService: MediaAssetsService) {}
 
-  @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
-  upload(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() dto: CreateMediaAssetDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.mediaAssetsService.upload(file, dto, user);
-  }
-
   @Post('upload/initiate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(
@@ -135,6 +125,15 @@ export class MediaAssetsController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OPERATIONS)
   activate(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.mediaAssetsService.activate(id, user);
+  }
+
+  @Patch(':id/house-ad')
+  @Roles(UserRole.SUPER_ADMIN)
+  markAsHouseAd(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.mediaAssetsService.markAsHouseAd(id, user);
   }
 
   @Delete(':id')
